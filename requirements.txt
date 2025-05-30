@@ -1,0 +1,9 @@
+requests
+numpy
+psycopg2
+PyMySQL
+SQLAlchemy
+pandas
+matplotlib
+plotly
+click
