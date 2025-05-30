@@ -15,7 +15,8 @@ A modular Python project for benchmarking PostgreSQL and MySQL performance.
     - db/            # Database drivers and connection logic
     - utils/         # Utility functions
     - __init__.py    # Module init
+- main.py            # Entry point
 - requirements.txt   # Dependencies
+- results.db         # SQLite results database
 
-
-
+Each module will contain relevant code for its responsibility.
