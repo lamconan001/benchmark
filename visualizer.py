@@ -18,7 +18,7 @@ def load_snapshots(sqlite_path, run_ids):
     conn.close()
     return df
 
-def visualize(sqlite_path, run_ids):
+def visualize(sqlite_path, run_ids, run_names=None):
     df_runs = load_runs(sqlite_path)
     df_snapshots = load_snapshots(sqlite_path, run_ids)
 
@@ -26,13 +26,19 @@ def visualize(sqlite_path, run_ids):
     run_infos = []
     avg_latency = []
     avg_qps = []
-    labels = []
+    # Sử dụng tên người dùng đặt nếu có
+    if run_names and len(run_names) >= len(run_ids):
+        labels = [run_names[idx] for idx in range(len(run_ids))]
+    else:
+        labels = []
+        for idx, run_id in enumerate(run_ids):
+            run_info = df_runs[df_runs['id'] == run_id].iloc[0]
+            label = f"Run {run_id} | {run_info['db_type']} | {run_info['test_type']} | Threads:{run_info['num_threads']}"
+            labels.append(label)
     color_map = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     for idx, run_id in enumerate(run_ids):
         df = df_snapshots[df_snapshots['run_id'] == run_id]
         run_info = df_runs[df_runs['id'] == run_id].iloc[0]
-        label = f"Run {run_id} | {run_info['db_type']} | {run_info['test_type']} | Threads:{run_info['num_threads']}"
-        labels.append(label)
         avg_latency.append(df['avg_latency_ms'].mean())
         duration = run_info['duration_secs']
         total_queries = df['total_queries'].sum()

@@ -44,18 +44,31 @@ def prepare(schema, rows, db_type, db_host, db_port, db_user, db_password, db_na
 @click.option('--db-name', prompt='Tên database', help='Tên database.')
 @click.option('--schema', prompt='CREATE TABLE statement', help='Câu lệnh CREATE TABLE.')
 @click.option('--sqlite-path', default='results.db', help='Đường dẫn file SQLite để lưu metrics.')
-def run(threads, duration, test_type, report_interval, db_type, db_host, db_port, db_user, db_password, db_name, schema, sqlite_path):
+@click.option('--is-cluster', is_flag=True, default=False, help='Kiểm thử trên cụm database.')
+@click.option('--cluster-nodes', default='', help='Danh sách các node trong cụm (ip:port, cách nhau bởi dấu phẩy).')
+def run(threads, duration, test_type, report_interval, db_type, db_host, db_port, db_user, db_password, db_name, schema, sqlite_path, is_cluster, cluster_nodes):
     """Chạy benchmark."""
+    if is_cluster:
+        if test_type not in ['read', 'readpk', 'readfull']:
+            click.echo('Chỉ hỗ trợ test_type là truy vấn đọc khi kiểm thử cụm database.', err=True)
+            return
+        if not cluster_nodes.strip():
+            click.echo('Vui lòng nhập --cluster-nodes khi kiểm thử cụm mà không dùng load-balancer.', err=True)
+            return
+        node_list = [n.strip() for n in cluster_nodes.split(',') if n.strip()]
+    else:
+        node_list = None
     click.echo('Bắt đầu benchmark...')
     coordinator = BenchmarkCoordinator(sqlite_path)
-    run_id = coordinator.run(threads, duration, test_type, report_interval, db_type, db_host, db_port, db_user, db_password, db_name, schema)
+    run_id = coordinator.run(threads, duration, test_type, report_interval, db_type, db_host, db_port, db_user, db_password, db_name, schema, is_cluster=is_cluster, cluster_nodes=node_list)
     click.echo(f'Run ID của bài kiểm thử này là: {run_id}')
     click.echo('Benchmark đã hoàn thành. Các snapshot đã được lưu vào SQLite.')
 
 @cli.command()
 @click.option('--sqlite-path', default='results.db', help='Đường dẫn file SQLite.')
 @click.option('--run-ids', default='', help='Chọn một hoặc nhiều run_id để visualize (cách nhau bởi dấu phẩy, để trống để liệt kê tất cả).')
-def visualize(sqlite_path, run_ids):
+@click.option('--names', default='', help='Tên chú thích cho từng run, cách nhau bởi dấu phẩy, thứ tự tương ứng với run-ids.')
+def visualize(sqlite_path, run_ids, names):
     """Trực quan hóa kết quả benchmark."""
     import sqlite3
     import pandas as pd
@@ -72,7 +85,8 @@ def visualize(sqlite_path, run_ids):
         click.echo(df.to_string(index=False))
         return
     run_id_list = [int(i.strip()) for i in run_ids.split(',') if i.strip().isdigit()]
-    coordinator.visualize(run_id_list, sqlite_path=sqlite_path)
+    name_list = [n.strip() for n in names.split(',')] if names.strip() else None
+    coordinator.visualize(run_id_list, sqlite_path=sqlite_path, run_names=name_list)
 
 if __name__ == '__main__':
     cli()

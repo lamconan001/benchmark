@@ -181,3 +181,35 @@ def run_benchmark(schema_sql, get_rows_func, exec_func, test_type, threads, dura
     for t in thread_list:
         t.join()
     metrics_collector.stop()
+
+def run_benchmark_cluster(schema_sql, get_rows_func, exec_funcs, test_type, threads, duration, metrics_collector):
+    columns = parse_columns(schema_sql)
+    table = re.search(r'CREATE TABLE\s+([`\w]+)', schema_sql, re.IGNORECASE).group(1).strip('`')
+    pk_col = get_primary_key(schema_sql)
+    pk_range = get_pk_range(get_rows_func, table, pk_col) if pk_col else []
+    thread_list = []
+    metrics_collector.start_snapshot_timer()
+    def worker_idx(idx):
+        exec_func = exec_funcs[idx]
+        end_time = time.time() + duration
+        while time.time() < end_time:
+            if test_type == 'readpk':
+                latency = run_select_pk(exec_func, table, pk_col, pk_range)
+            elif test_type == 'readfull':
+                latency = run_select_full(exec_func, table)
+            elif test_type == 'read':
+                if random.random() < 0.5:
+                    latency = run_select_full(exec_func, table)
+                else:
+                    latency = run_select_pk(exec_func, table, pk_col, pk_range)
+            else:
+                print(f"Unknown test type: {test_type}")
+                latency = 0
+            metrics_collector.record(latency)
+    for i in range(threads):
+        t = threading.Thread(target=worker_idx, args=(i,))
+        t.start()
+        thread_list.append(t)
+    for t in thread_list:
+        t.join()
+    metrics_collector.stop()
