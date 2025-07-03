@@ -2,9 +2,14 @@
 from sqlalchemy import create_engine, text
 
 class DBExecutor:
-    def __init__(self, engine_url):
+    def __init__(self, engine_url, pool_size=10, max_overflow=20):
         self.engine_url = engine_url
-        self.engine = create_engine(self.engine_url, pool_pre_ping=True)
+        self.engine = create_engine(
+            self.engine_url,
+            pool_pre_ping=True,
+            pool_size=pool_size,
+            max_overflow=max_overflow
+        )
 
     def get_pk_values(self, table, pk_col):
         with self.engine.connect() as conn:

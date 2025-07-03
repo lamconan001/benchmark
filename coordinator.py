@@ -28,7 +28,8 @@ class BenchmarkCoordinator:
                     engine_url = f'mysql+pymysql://{db_user}:{db_password}@{host}:{port}/{db_name}'
                 else:
                     engine_url = f'postgresql+psycopg2://{db_user}:{db_password}@{host}:{port}/{db_name}'
-                executors.append(DBExecutor(engine_url))
+                # Đặt pool_size và max_overflow bằng số threads để không bị thiếu connection
+                executors.append(DBExecutor(engine_url, pool_size=threads, max_overflow=threads*2))
             # Phân phối round-robin theo thread
             def get_rows_func(table, pk_col):
                 # Lấy pk từ node đầu tiên
